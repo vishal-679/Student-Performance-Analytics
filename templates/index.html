@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GradeScope | Student Performance Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark">G</div><div><b>GradeScope</b><small>ACADEMIC INSIGHTS</small></div></div>
+    <div class="side-label">WORKSPACE</div>
+    <a class="nav-item active" href="#overview"><span>▦</span> Overview</a>
+    <a class="nav-item" href="#students"><span>♙</span> Student records</a>
+    <a class="nav-item" href="#analytics"><span>▥</span> Analytics</a>
+    <div class="sidebar-bottom">
+      <div class="side-label">PROJECT</div>
+      <div class="side-note"><span class="status-dot"></span> Local database connected</div>
+      <p>Student Performance<br>Analytics System</p>
+      <small>College project · Flask + SQLite</small>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div><div class="eyebrow">ACADEMIC DASHBOARD / 2026</div><h1>Performance overview</h1></div>
+      <div class="top-actions"><span class="live-pill"><i></i> LIVE DATA</span><a class="export-btn" href="{{ url_for('export_csv') }}">↓ Export CSV</a></div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}{% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}{% endif %}
+    {% endwith %}
+
+    <section id="overview" class="stats-grid">
+      <article class="stat-card"><div class="stat-top"><span>Total records</span><span class="stat-icon violet">♙</span></div><div class="stat-value">{{ total }}</div><div class="stat-foot">Student-subject entries</div></article>
+      <article class="stat-card"><div class="stat-top"><span>Average score</span><span class="stat-icon blue">⌁</span></div><div class="stat-value">{{ avg }}<em>/100</em></div><div class="stat-foot">Across all records</div></article>
+      <article class="stat-card"><div class="stat-top"><span>Pass rate</span><span class="stat-icon green">✓</span></div><div class="stat-value">{{ pass_rate }}<em>%</em></div><div class="stat-foot">Pass mark: 40 / 100</div></article>
+      <article class="stat-card"><div class="stat-top"><span>Needs support</span><span class="stat-icon orange">!</span></div><div class="stat-value">{{ at_risk }}</div><div class="stat-foot">Scores below 40</div></article>
+    </section>
+
+    <section id="analytics" class="charts-grid">
+      <article class="panel chart-panel"><div class="panel-heading"><div><h2>Subject performance</h2><p>Average marks by subject</p></div><span class="mini-tag">SUBJECTS</span></div><div class="chart-wrap"><canvas id="subjectChart"></canvas></div></article>
+      <article class="panel chart-panel"><div class="panel-heading"><div><h2>Score distribution</h2><p>Students grouped by score range</p></div><span class="mini-tag">DISTRIBUTION</span></div><div class="chart-wrap doughnut-wrap"><canvas id="distributionChart"></canvas></div></article>
+      <article class="panel chart-panel wide-chart"><div class="panel-heading"><div><h2>Department comparison</h2><p>Average marks across departments</p></div><span class="mini-tag">DEPARTMENTS</span></div><div class="chart-wrap short-chart"><canvas id="departmentChart"></canvas></div></article>
+      <article class="panel top-panel"><div class="panel-heading"><div><h2>Top performers</h2><p>Highest marks recorded</p></div><span class="trophy">✦</span></div>
+        {% for s in top %}<div class="top-row"><div class="rank">{{ loop.index }}</div><div class="top-person"><b>{{ s.name }}</b><small>{{ s.roll_no }} · {{ s.subject }}</small></div><strong>{{ "%.0f"|format(s.marks) }}<small>/100</small></strong></div>{% else %}<p class="empty">No records yet.</p>{% endfor %}
+      </article>
+    </section>
+
+    <section id="students" class="records-section">
+      <div class="section-heading"><div><div class="eyebrow">DATA MANAGEMENT</div><h2>Student records</h2><p>Add and manage academic performance entries.</p></div><button class="primary-btn" onclick="document.getElementById('addModal').classList.add('show')">＋ Add student</button></div>
+      <div class="panel table-panel">
+        <div class="table-toolbar"><div><b>All entries</b><span class="record-count">{{ total }} records</span></div><input id="searchInput" type="search" placeholder="Search name, roll no, subject..."></div>
+        <div class="table-scroll"><table><thead><tr><th>STUDENT</th><th>ROLL NUMBER</th><th>DEPARTMENT</th><th>SUBJECT</th><th>MARKS</th><th>RESULT</th><th></th></tr></thead><tbody id="studentRows">
+        {% for s in students %}<tr>
+          <td><div class="student-cell"><div class="avatar">{{ s.name[0]|upper }}</div><b>{{ s.name }}</b></div></td>
+          <td class="muted">{{ s.roll_no }}</td><td><span class="dept-pill">{{ s.department }}</span></td><td>{{ s.subject }}</td>
+          <td><b>{{ "%.1f"|format(s.marks) }}</b><div class="progress"><span style="width:{{ s.marks }}%"></span></div></td>
+          <td>{% if s.marks >= 40 %}<span class="result pass">PASS</span>{% else %}<span class="result fail">REVIEW</span>{% endif %}</td>
+          <td><form method="POST" action="{{ url_for('delete_student', student_id=s.id) }}" onsubmit="return confirm('Delete this record?')"><button class="delete-btn" title="Delete">×</button></form></td>
+        </tr>{% else %}<tr><td colspan="7" class="empty">No student records. Add your first entry.</td></tr>{% endfor %}
+        </tbody></table></div>
+        <div class="table-footer">Showing {{ total }} student-subject entries <form method="POST" action="{{ url_for('reset_demo') }}" onsubmit="return confirm('Restore sample data? This replaces all current records.')"><button class="text-btn">Restore demo data</button></form></div>
+      </div>
+    </section>
+    <footer>GradeScope <span>•</span> Student Performance Analytics System <span>•</span> Built with Flask & SQLite</footer>
+  </main>
+</div>
+
+<div class="modal" id="addModal" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="modal-card"><div class="modal-head"><div><div class="eyebrow">NEW ENTRY</div><h2>Add student performance</h2></div><button class="close-btn" onclick="document.getElementById('addModal').classList.remove('show')">×</button></div>
+    <form method="POST" action="{{ url_for('add_student') }}" class="student-form">
+      <label>Student name<input name="name" placeholder="e.g. Priya Sharma" required></label>
+      <label>Roll number<input name="roll_no" placeholder="e.g. CS107" required></label>
+      <div class="form-row"><label>Department<select name="department" required><option value="">Select</option><option>CSE</option><option>ECE</option><option>IT</option><option>EEE</option><option>MECH</option><option>CIVIL</option></select></label><label>Semester<input type="number" name="semester" min="1" max="12" placeholder="3" required></label></div>
+      <label>Subject<input name="subject" placeholder="e.g. Data Structures" required></label>
+      <label>Marks (0–100)<input type="number" name="marks" min="0" max="100" step="0.1" placeholder="85" required></label>
+      <button class="primary-btn submit-btn" type="submit">Save student record →</button>
+    </form>
+  </div>
+</div>
+
+<script>
+const subjectLabels = {{ subject_rows|map(attribute='subject')|list|tojson }};
+const subjectValues = {{ subject_rows|map(attribute='average')|list|tojson }};
+const distLabels = {{ distribution|map(attribute='band')|list|tojson }};
+const distValues = {{ distribution|map(attribute='total')|list|tojson }};
+const deptLabels = {{ dept_rows|map(attribute='department')|list|tojson }};
+const deptValues = {{ dept_rows|map(attribute='average')|list|tojson }};
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.color = "#8790a5";
+new Chart(document.getElementById('subjectChart'), {type:'bar',data:{labels:subjectLabels,datasets:[{data:subjectValues,backgroundColor:['#7667f5','#4c9cf5','#39b99a','#f1ae55','#e77a9a'],borderRadius:7,barThickness:27}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,grid:{color:'#edf0f6'},ticks:{stepSize:20}},x:{grid:{display:false}}}}});
+new Chart(document.getElementById('distributionChart'), {type:'doughnut',data:{labels:distLabels,datasets:[{data:distValues,backgroundColor:['#f07878','#f2b45c','#5b9cf5','#38b99a'],borderWidth:0,hoverOffset:5}]},options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8,padding:16}}}}});
+new Chart(document.getElementById('departmentChart'), {type:'bar',data:{labels:deptLabels,datasets:[{label:'Average marks',data:deptValues,backgroundColor:'#7667f5',borderRadius:7,barThickness:35}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,max:100,grid:{color:'#edf0f6'}},y:{grid:{display:false}}}}});
+document.getElementById('searchInput').addEventListener('input', function(){
+  const q=this.value.toLowerCase();
+  document.querySelectorAll('#studentRows tr').forEach(row=>row.style.display=row.innerText.toLowerCase().includes(q)?'':'none');
+});
+</script>
+</body></html>
