@@ -97,3 +97,25 @@ student_performance_analytics/
 - Chart.js is loaded from a CDN, so an internet connection is required for charts to render.
 - This is a demonstration/academic project. Use fictional or anonymized student data.
 - For production use, add authentication, CSRF protection, role-based access, stronger validation and a normalized database schema.
+---
+
+## 📸 Project Screenshots
+
+### 1. Dashboard
+![Dashboard](screenshots/dashboard.png)
+
+### 2. Student Performance Analytics
+![Analytics](screenshots/analytics.png)
+
+### 3. Student Records
+![Student Records](screenshots/student%20record.png)
+
+---
+
+## 🚀 Future Enhancements
+
+- Student login and authentication
+- Faculty login system
+- Attendance tracking
+- Predictive student performance analysis
+- PDF report generation
